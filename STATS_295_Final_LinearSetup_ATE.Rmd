@@ -1,0 +1,531 @@
+---
+title: "STATS 295 Linear Setup Code"
+output: html_document
+---
+
+
+### This is the Direct Method ATE estimation considering a predictor X, treatment A, and response Y
+
+
+```{r}
+set.seed(123)
+
+sims <- 1000  # Number of simulations
+n <- 1000     # Number of observations
+
+# True ATE
+ATE <- 0.5
+
+# Direct Method (DM) results
+D.M <- numeric(sims)
+
+# Simulate data and compute estimates for each method
+for (j in 1:sims) {
+  X <- runif(n, 0, 1)  # Simulate X as uniform random variable between 0 and 1
+  A <- ifelse(X > 0.6, 1, 0)  # Treatment assignment: A = 1 if X > 0.6 else A = 0
+  epsilon <- rnorm(n, 0, 1)  # Error term
+  
+  # Response variable Y as given: Y = 0.5 * X + A * X + epsilon
+  Y <- 0.5 * X + A * X + epsilon  
+  
+  # Direct Method (DM) Estimator
+  fit <- lm(Y ~ A + X + A:X)  # Fit the linear model
+
+  # Extract coefficients from the model
+  coef <- summary(fit)$coefficients
+  
+  # Compute potential outcomes for A = 1 and A = 0
+  con_mean1 <- coef[1, 1] + coef[2, 1] + (coef[3, 1] + coef[4, 1]) * X  # E[Y | A = 1]
+  con_mean0 <- coef[1, 1] + coef[3, 1] * X  # E[Y | A = 0]
+  
+  # Compute ATE for this simulation using the Direct Method
+  D.M[j] <- mean(con_mean1 - con_mean0)  # ATE using Direct Method
+}
+
+# Bias calculations
+D.M_bias <- mean(ATE - D.M)  # Bias for Direct Method
+
+# Variance calculations
+D.M_var <- var(D.M)  # Variance for Direct Method
+
+# Results summary for Direct Method only
+results <- data.frame(
+  Bias = D.M_bias,
+  Variance = D.M_var
+)
+
+# Print the results
+print(results)
+```
+
+
+### This is the Direct Method ATE estimation considering a predictor X, treatment A, response Y, and confounder Z1. Here we DO NOT adjust for the confounder Z1
+
+
+```{r}
+set.seed(123)
+
+sims <- 1000  # Number of simulations
+n <- 1000     # Number of observations
+
+# True ATE
+ATE <- 0.5
+
+# Direct Method (DM) results
+D.M <- numeric(sims)
+
+# Simulate data and compute estimates for each method
+for (j in 1:sims) {
+  Z1 <- rnorm(n)
+
+# Simulate X, now dependent on Z1 (e.g., X = 0.5*Z1 + noise)
+X <- 0.5 * Z1 + runif(n)
+
+  A <- ifelse(X > 0.6, 1, 0)  # Treatment assignment: A = 1 if X > 0.6 else A = 0
+  epsilon <- rnorm(n, 0, 1)  # Error term
+  
+  # Response variable Y as given: Y = 0.5 * X + A * X + epsilon
+  
+  Y <- 0.5 * X + A * X + 0.5 * Z1 + epsilon
+  
+  # Direct Method (DM) Estimator
+  fit <- lm(Y ~ A + X + A:X)  # Fit the linear model
+
+  # Extract coefficients from the model
+  coef <- summary(fit)$coefficients
+  
+  # Compute potential outcomes for A = 1 and A = 0
+  con_mean1 <- coef[1, 1] + coef[2, 1] + (coef[3, 1] + coef[4, 1]) * X  # E[Y | A = 1]
+  con_mean0 <- coef[1, 1] + coef[3, 1] * X  # E[Y | A = 0]
+  
+  # Compute ATE for this simulation using the Direct Method
+  D.M[j] <- mean(con_mean1 - con_mean0)  # ATE using Direct Method
+}
+
+# Bias calculations
+D.M_bias <- mean(ATE - D.M)  # Bias for Direct Method
+
+# Variance calculations
+D.M_var <- var(D.M)  # Variance for Direct Method
+
+# Results summary for Direct Method only
+results <- data.frame(
+  Bias = D.M_bias,
+  Variance = D.M_var
+)
+
+# Print the results
+print(results)
+```
+
+
+
+### This is the Direct Method ATE estimation considering a predictor X, treatment A, response Y, and confounder Z1. Here we DO adjust for the confounder Z1
+
+```{r}
+set.seed(123)
+
+sims <- 1000  # Number of simulations
+n <- 1000     # Number of observations
+
+# True ATE
+ATE <- 0.5
+
+# Direct Method (DM) results
+D.M <- numeric(sims)
+
+# Simulate data and compute estimates for each method
+for (j in 1:sims) {
+  Z1 <- rnorm(n)
+
+# Simulate X, now dependent on Z1 (e.g., X = 0.5*Z1 + noise)
+X <- 0.5 * Z1 + runif(n)
+
+  A <- ifelse(X > 0.6, 1, 0)  # Treatment assignment: A = 1 if X > 0.6 else A = 0
+  epsilon <- rnorm(n, 0, 1)  # Error term
+  
+  # Response variable Y as given: Y = 0.5 * X + A * X + epsilon
+  
+  Y <- 0.5 * X + A * X + 0.5 * Z1 + epsilon
+  
+  # Direct Method (DM) Estimator
+  fit <- lm(Y ~ A + X + A:X + Z1)
+
+  # Extract coefficients from the model
+  coef <- summary(fit)$coefficients
+  
+  # Compute potential outcomes for A = 1 and A = 0 (adjusted for Z1)
+  con_mean1 <- coef[1, 1] + coef[2, 1] + (coef[3, 1] + coef[5, 1]) * X + coef[4, 1] * Z1  # E[Y | A = 1]
+  con_mean0 <- coef[1, 1] + coef[3, 1] * X + coef[4, 1] * Z1  # E[Y | A = 0]
+  
+  # Compute ATE for this simulation using the Direct Method
+  D.M[j] <- mean(con_mean1 - con_mean0)  # ATE using Direct Method
+}
+
+# Bias calculations
+D.M_bias <- mean(ATE - D.M)  # Bias for Direct Method
+
+# Variance calculations
+D.M_var <- var(D.M)  # Variance for Direct Method
+
+# Results summary for Direct Method only
+results <- data.frame(
+  Bias = D.M_bias,
+  Variance = D.M_var
+)
+
+# Print the results
+print(results)
+```
+
+
+
+### This is the Direct Method ATE estimation considering a predictor X, treatment A, response Y, and mediator variable Z2. Here we DO NOT adjust for the mediator variable Z2
+
+
+```{r}
+set.seed(123)
+
+sims <- 1000  # Number of simulations
+n <- 1000     # Number of observations
+
+# True ATE
+ATE <- 0.5
+
+# Direct Method (DM) results
+D.M <- numeric(sims)
+
+# Simulate data and compute estimates for each method
+for (j in 1:sims) {
+  X <- runif(n, 0, 1)  # Simulate X as uniform random variable between 0 and 1
+  A <- ifelse(X > 0.6, 1, 0)  # Treatment assignment: A = 1 if X > 0.6 else A = 0
+  epsilon_M <- rnorm(n)  # Error term for mediator
+Z2 <- 0.5 * X +epsilon_M 
+  
+  # Response variable Y as given: Y = 0.5 * X + A * X + epsilon
+epsilon <- rnorm(n, 0, 1)  # Error term
+  Y <- 0.5 * Z2 + 0.5 * X + A * X + epsilon  
+  
+  # Direct Method (DM) Estimator
+  fit <- lm(Y ~ A + X + A:X)  # Fit the linear model
+
+  # Extract coefficients from the model
+  coef <- summary(fit)$coefficients
+  
+  # Compute potential outcomes for A = 1 and A = 0
+  con_mean1 <- coef[1, 1] + coef[2, 1] + (coef[3, 1] + coef[4, 1]) * X  # E[Y | A = 1]
+  con_mean0 <- coef[1, 1] + coef[3, 1] * X  # E[Y | A = 0]
+  
+  # Compute ATE for this simulation using the Direct Method
+  D.M[j] <- mean(con_mean1 - con_mean0)  # ATE using Direct Method
+}
+
+# Bias calculations
+D.M_bias <- mean(ATE - D.M)  # Bias for Direct Method
+
+# Variance calculations
+D.M_var <- var(D.M)  # Variance for Direct Method
+
+# Results summary for Direct Method only
+results <- data.frame(
+  Bias = D.M_bias,
+  Variance = D.M_var
+)
+
+# Print the results
+print(results)
+```
+
+### This is the Direct Method ATE estimation considering a predictor X, treatment A, response Y, and mediator variable Z2. Here we DO adjust for the mediator variable Z2
+
+
+```{r}
+set.seed(123)
+
+sims <- 1000  # Number of simulations
+n <- 1000     # Number of observations
+
+# True ATE
+ATE <- 0.5
+
+# Direct Method (DM) results
+D.M <- numeric(sims)
+
+# Simulate data and compute estimates for each method
+for (j in 1:sims) {
+  X <- runif(n, 0, 1)  # Simulate X as uniform random variable between 0 and 1
+  A <- ifelse(X > 0.6, 1, 0)  # Treatment assignment: A = 1 if X > 0.6 else A = 0
+  epsilon_M <- rnorm(n)  # Error term for mediator
+M <- 0.5 * X +epsilon_M 
+  
+  # Response variable Y as given: Y = 0.5 * X + A * X + epsilon
+epsilon <- rnorm(n, 0, 1)  # Error term
+  Y <- 0.5 * M + 0.5 * X + A * X + epsilon  
+  
+  # Direct Method (DM) Estimator
+  fit <- lm(Y ~ A + X + A:X + M)  # Fit the linear model
+
+  # Extract coefficients from the model
+  coef <- summary(fit)$coefficients
+  
+  # Compute potential outcomes for A = 1 and A = 0
+  con_mean1 <- coef[1, 1] + coef[2, 1] + (coef[3, 1] + coef[5, 1]) * X + coef[4,1] * M # E[Y | A = 1]
+  con_mean0 <- coef[1, 1] + coef[3, 1] * X + coef[4,1] * M  # E[Y | A = 0]
+  
+  # Compute ATE for this simulation using the Direct Method
+  D.M[j] <- mean(con_mean1 - con_mean0)  # ATE using Direct Method
+}
+
+# Bias calculations
+D.M_bias <- mean(ATE - D.M)  # Bias for Direct Method
+
+# Variance calculations
+D.M_var <- var(D.M)  # Variance for Direct Method
+
+# Results summary for Direct Method only
+results <- data.frame(
+  Bias = D.M_bias,
+  Variance = D.M_var
+)
+
+# Print the results
+print(results)
+```
+
+
+
+
+
+### This is the Direct Method ATE estimation considering a predictor X, treatment A, response Y, and precision variable Z3. Here we DO NOT adjust for the precision variable Z3
+
+
+```{r}
+set.seed(123)
+
+sims <- 1000  # Number of simulations
+n <- 1000   # Number of observations
+
+# True ATE
+ATE <- 0.5
+
+# Direct Method (DM) results
+D.M <- numeric(sims)
+
+# Simulate data and compute estimates for each method
+for (j in 1:sims) {
+  X <- runif(n, 0, 1)  # Simulate X as uniform random variable between 0 and 1
+  Z3 <- rnorm(n,0,1)
+  A <- ifelse(X > 0.6, 1, 0)  # Treatment assignment: A = 1 if X > 0.6 else A = 0
+
+  epsilon <- rnorm(n, 0, 1)  # Error term
+  
+  
+  # Response variable Y as given: Y = 0.5 * X + A * X + epsilon
+  Y <- 0.5 * X + A * X + 0.5* Z3 + epsilon  
+  
+  # Direct Method (DM) Estimator
+  fit <- lm(Y ~ A + X + A:X)  # Fit the linear model
+
+  # Extract coefficients from the model
+  coef <- summary(fit)$coefficients
+  
+  # Compute potential outcomes for A = 1 and A = 0
+  con_mean1 <- coef[1, 1] + coef[2, 1] + (coef[3, 1] + coef[4, 1]) * X  # E[Y | A = 1]
+  con_mean0 <- coef[1, 1] + coef[3, 1] * X  # E[Y | A = 0]
+  
+  # Compute ATE for this simulation using the Direct Method
+  D.M[j] <- mean(con_mean1 - con_mean0)  # ATE using Direct Method
+}
+
+# Bias calculations
+D.M_bias <- (mean(D.M) - 0.5)  # Bias for Direct Method
+
+# Variance calculations
+D.M_var <- var(D.M)  # Variance for Direct Method
+
+# Results summary for Direct Method only
+results <- data.frame(
+  Bias = D.M_bias,
+  Variance = D.M_var
+)
+
+# Print the results
+print(results)
+```
+
+
+### This is the Direct Method ATE estimation considering a predictor X, treatment A, response Y, and precision variable Z3. Here we DO adjust for the precision variable Z3
+
+
+```{r}
+set.seed(123456)
+
+sims <- 1000  # Number of simulations
+n <- 1000   # Number of observations
+
+# True ATE
+ATE <- 0.5
+
+# Direct Method (DM) results
+D.M <- numeric(sims)
+
+# Simulate data and compute estimates for each method
+for (j in 1:sims) {
+  X <- runif(n, 0, 1)  # Simulate X as uniform random variable between 0 and 1
+  A <- ifelse(X > 0.6, 1, 0)  # Treatment assignment: A = 1 if X > 0.6 else A = 0
+  P <- rnorm(n)
+  epsilon <- rnorm(n, 0, 1)  # Error term
+  
+  
+  # Response variable Y as given: Y = 0.5 * X + A * X + epsilon
+  Y <- 0.5 * X + A * X + 0.5 * P + epsilon  
+  
+  # Direct Method (DM) Estimator
+  fit <- lm(Y ~ A + X + A:X+P)  # Fit the linear model
+
+  # Extract coefficients from the model
+  coef <- summary(fit)$coefficients
+  
+  # Compute potential outcomes for A = 1 and A = 0
+  con_mean1 <- coef[1, 1] + coef[2, 1] + (coef[3, 1] + coef[5, 1]) * X + coef[4, 1] * P  # E[Y | A = 1]
+  con_mean0 <- coef[1, 1] + coef[3, 1] * X + coef[4, 1] * P  # E[Y | A = 0]
+  
+  # Compute ATE for this simulation using the Direct Method
+  D.M[j] <- mean(con_mean1 - con_mean0)  # ATE using Direct Method
+}
+
+# Bias calculations
+D.M_bias <- mean(ATE - D.M)  # Bias for Direct Method
+
+# Variance calculations
+D.M_var <- var(D.M)  # Variance for Direct Method
+
+# Results summary for Direct Method only
+results <- data.frame(
+  Bias = D.M_bias,
+  Variance = D.M_var
+)
+
+# Print the results
+print(results)
+```
+
+
+
+
+### This is the Direct Method ATE estimation considering a predictor X, treatment A, response Y, and nuisance variable Z4. Here we DO NOT adjust for the nuisance variable Z4
+
+```{r}
+set.seed(123)
+
+sims <- 1000  # Number of simulations
+n <- 1000     # Number of observations
+
+# True ATE
+ATE <- 0.5
+
+# Direct Method (DM) results
+D.M <- numeric(sims)
+
+# Simulate data and compute estimates for each method
+for (j in 1:sims) {
+  X <- runif(n, 0, 1)  # Simulate X as uniform random variable between 0 and 1
+  A <- ifelse(X > 0.6, 1, 0)  # Treatment assignment: A = 1 if X > 0.6 else A = 0
+  
+  epsilon_M <- rnorm(n)  # Error term for mediator
+Z4 <- 0.5* X + rnorm(n)
+  
+  
+  # Response variable Y as given: Y = 0.5 * X + A * X + epsilon
+epsilon <- rnorm(n, 0, 1)  # Error term
+  Y <-  0.5 * X + A * X + epsilon 
+  
+  # Direct Method (DM) Estimator
+  fit <- lm(Y ~ A + X + A:X)  # Fit the linear model
+
+  # Extract coefficients from the model
+  coef <- summary(fit)$coefficients
+  
+  # Compute potential outcomes for A = 1 and A = 0
+  con_mean1 <- coef[1, 1] + coef[2, 1] + (coef[3, 1] + coef[4, 1]) * X  # E[Y | A = 1]
+  con_mean0 <- coef[1, 1] + coef[3, 1] * X  # E[Y | A = 0]
+  
+  # Compute ATE for this simulation using the Direct Method
+  D.M[j] <- mean(con_mean1 - con_mean0)  # ATE using Direct Method
+}
+
+# Bias calculations
+D.M_bias <- mean(ATE - D.M)  # Bias for Direct Method
+
+# Variance calculations
+D.M_var <- var(D.M)  # Variance for Direct Method
+
+# Results summary for Direct Method only
+results <- data.frame(
+  Bias = D.M_bias,
+  Variance = D.M_var
+)
+
+# Print the results
+print(results)
+```
+
+
+
+### This is the Direct Method ATE estimation considering a predictor X, treatment A, response Y, and nuisance variable Z4. Here we DO NOT adjust for the nuisance variable Z4
+
+```{r}
+set.seed(123)
+
+sims <- 1000  # Number of simulations
+n <- 1000     # Number of observations
+
+# True ATE
+ATE <- 0.5
+
+# Direct Method (DM) results
+D.M <- numeric(sims)
+
+# Simulate data and compute estimates for each method
+for (j in 1:sims) {
+  X <- runif(n, 0, 1)  # Simulate X as uniform random variable between 0 and 1
+  A <- ifelse(X > 0.6, 1, 0)  # Treatment assignment: A = 1 if X > 0.6 else A = 0
+  
+  epsilon_M <- rnorm(n)  # Error term for mediator
+Z4 <- 0.5* X + rnorm(n)
+  
+  
+  # Response variable Y as given: Y = 0.5 * X + A * X + epsilon
+epsilon <- rnorm(n, 0, 1)  # Error term
+  Y <-  0.5 * X + A * X + epsilon 
+  
+  # Direct Method (DM) Estimator
+  fit <- lm(Y ~ A + X + A:X + Z4)  # Fit the linear model
+
+  # Extract coefficients from the model
+  coef <- summary(fit)$coefficients
+  
+  # Compute potential outcomes for A = 1 and A = 0
+  con_mean1 <- coef[1, 1] + coef[2, 1] + (coef[3, 1] + coef[5, 1]) * X + coef[4,1]*M # E[Y | A = 1]
+  con_mean0 <- coef[1, 1] + coef[3, 1] * X + coef[4,1]*M  # E[Y | A = 0]
+  
+  # Compute ATE for this simulation using the Direct Method
+  D.M[j] <- mean(con_mean1 - con_mean0)  # ATE using Direct Method
+}
+
+# Bias calculations
+D.M_bias <- mean(ATE - D.M)  # Bias for Direct Method
+
+# Variance calculations
+D.M_var <- var(D.M)  # Variance for Direct Method
+
+# Results summary for Direct Method only
+results <- data.frame(
+  Bias = D.M_bias,
+  Variance = D.M_var
+)
+
+# Print the results
+print(results)
+```
+
